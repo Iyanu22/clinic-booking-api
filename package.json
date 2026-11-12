@@ -1,0 +1,20 @@
+{
+  "name": "clinic-booking-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --env-file-if-exists=.env --watch server.js",
+    "db:setup": "node --env-file-if-exists=.env scripts/setup-db.js",
+    "db:bookings": "node --no-warnings --env-file-if-exists=.env scripts/show-bookings.js",
+    "test": "node --env-file-if-exists=.env --test --test-concurrency=1 test/api.test.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.0"
+  }
+}

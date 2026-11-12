@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book an appointment</title>
+<style>
+  :root {
+    --ink: #1c2b2a; --muted: #5d6f6c; --line: #d9e2df; --bg: #f5f8f6; --card: #fff;
+    --brand: #0f6b5c; --brand-dark: #0a5044; --tint: #e3f1ed; --danger: #a4302a; --danger-bg: #fbecea;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 1.75rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 0 0 16px; }
+  h3 { font-size: .85rem; margin: 20px 0 8px; color: var(--muted); font-weight: 600; }
+  .lede { margin: 0 0 28px; color: var(--muted); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+  label { display: block; font-size: .9rem; font-weight: 600; margin-bottom: 4px; }
+  input, select { width: 100%; padding: 10px 12px; font: inherit; color: inherit; background: #fff; border: 1px solid #b4c3bf; border-radius: 6px; }
+  .field { margin-bottom: 14px; }
+  button { font: inherit; cursor: pointer; }
+  :focus-visible { outline: 3px solid #5fb3a3; outline-offset: 1px; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; }
+  .chip { flex: 0 0 auto; padding: 8px 12px; background: #fff; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); text-align: center; line-height: 1.25; font-size: .85rem; }
+  .chip strong { display: block; font-size: 1rem; }
+  .chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .times { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .time { padding: 10px 6px; background: #fff; border: 1px solid #b4c3bf; border-radius: 6px; color: var(--ink); }
+  .time:hover { border-color: var(--brand); }
+  .time[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .primary { width: 100%; padding: 12px; background: var(--brand); color: #fff; border: 0; border-radius: 6px; font-weight: 600; }
+  .primary:hover:not(:disabled) { background: var(--brand-dark); }
+  .primary:disabled { opacity: .55; cursor: not-allowed; }
+  .summary { padding: 12px; background: var(--tint); border-radius: 6px; margin-bottom: 16px; font-size: .95rem; }
+  .summary.empty { background: #f0f3f2; color: var(--muted); }
+  .summary strong { display: block; }
+  .error { margin: 0 0 14px; padding: 10px 12px; background: var(--danger-bg); color: var(--danger); border-radius: 6px; font-size: .95rem; }
+  .note { color: var(--muted); font-size: .9rem; }
+  .confirmation { max-width: 520px; margin: 0 auto; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 99px; background: var(--tint); color: var(--brand-dark); font-size: .85rem; font-weight: 600; }
+  .badge.cancelled { background: var(--danger-bg); color: var(--danger); }
+  dl { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; margin: 18px 0; }
+  dt { color: var(--muted); }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  .ghost { width: 100%; padding: 11px; background: #fff; border: 1px solid #b4c3bf; border-radius: 6px; color: var(--ink); }
+  [hidden] { display: none !important; }
+  @media (max-width: 720px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Book an appointment</h1>
+  <p class="lede">Choose a time that suits you. Times are shown in your local time zone.</p>
+
+  <div id="booking-view" class="layout">
+    <section class="card" aria-labelledby="slots-heading">
+      <h2 id="slots-heading">Available times</h2>
+      <div class="field">
+        <label for="provider">Doctor</label>
+        <select id="provider"><option value="">Any doctor</option></select>
+      </div>
+      <p id="slots-status" class="note" role="status">Loading available times…</p>
+      <div id="days" class="chips"></div>
+      <div id="times"></div>
+    </section>
+
+    <section class="card" aria-labelledby="details-heading">
+      <h2 id="details-heading">Your details</h2>
+      <div id="selection" class="summary empty">Choose a time to continue.</div>
+      <form id="form" novalidate>
+        <p id="form-error" class="error" role="alert" hidden></p>
+        <div class="field">
+          <label for="name">Full name</label>
+          <input id="name" autocomplete="name" required maxlength="200">
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" required>
+        </div>
+        <button id="submit" class="primary" type="submit" disabled>Confirm booking</button>
+      </form>
+    </section>
+  </div>
+
+  <section id="confirmation-view" class="card confirmation" aria-labelledby="confirmation-heading" tabindex="-1" hidden>
+    <h2 id="confirmation-heading">Your appointment is booked</h2>
+    <span id="c-status" class="badge"></span>
+    <dl>
+      <dt>When</dt><dd id="c-when"></dd>
+      <dt>Doctor</dt><dd id="c-provider"></dd>
+      <dt>Name</dt><dd id="c-name"></dd>
+      <dt>Email</dt><dd id="c-email"></dd>
+      <dt>Reference</dt><dd id="c-id"></dd>
+    </dl>
+    <p class="note">Keep this page's link to come back to your booking.</p>
+    <button id="book-another" class="ghost" type="button">Book another appointment</button>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const dayKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+const timeLabel = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+const fullLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+const weekdayLabel = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+const dateLabel = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+
+let slots = [];
+let chosenDay = null;
+let chosenSlot = null;
+let submitting = false;
+// Reused if the same details are resubmitted after a failure, so a retry can't book twice.
+let pendingRequest = null;
+
+async function api(path, options = {}) {
+  const res = await fetch('/web' + path, options);
+  const body = await res.json().catch(() => ({}));
+  return { res, body };
+}
+
+function openSlots() {
+  const provider = $('provider').value;
+  const now = Date.now();
+  return slots.filter((s) => s.available && new Date(s.start).getTime() > now && (!provider || s.provider === provider));
+}
+
+function render() {
+  const open = openSlots();
+  const days = [...new Set(open.map((s) => dayKey.format(new Date(s.start))))];
+  if (!days.includes(chosenDay)) chosenDay = days[0] ?? null;
+
+  $('slots-status').textContent = days.length ? '' : 'No times are available right now.';
+  $('slots-status').hidden = days.length > 0;
+
+  $('days').replaceChildren(...days.map((day) => {
+    const first = new Date(open.find((s) => dayKey.format(new Date(s.start)) === day).start);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'chip';
+    button.setAttribute('aria-pressed', String(day === chosenDay));
+    const weekday = document.createElement('span');
+    weekday.textContent = weekdayLabel.format(first);
+    const date = document.createElement('strong');
+    date.textContent = dateLabel.format(first);
+    button.append(weekday, date);
+    button.onclick = () => { chosenDay = day; render(); };
+    return button;
+  }));
+
+  const today = open.filter((s) => dayKey.format(new Date(s.start)) === chosenDay);
+  const providers = [...new Set(today.map((s) => s.provider))];
+  $('times').replaceChildren(...providers.flatMap((provider) => {
+    const heading = document.createElement('h3');
+    heading.textContent = provider;
+    const grid = document.createElement('div');
+    grid.className = 'times';
+    grid.append(...today.filter((s) => s.provider === provider).map((slot) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'time';
+      button.textContent = timeLabel.format(new Date(slot.start));
+      button.setAttribute('aria-pressed', String(chosenSlot?.id === slot.id));
+      button.onclick = () => { chosenSlot = slot; clearError(); render(); };
+      return button;
+    }));
+    return [heading, grid];
+  }));
+
+  renderSelection();
+}
+
+function renderSelection() {
+  const stillOpen = chosenSlot && openSlots().some((s) => s.id === chosenSlot.id);
+  if (!stillOpen) chosenSlot = null;
+  const box = $('selection');
+  box.classList.toggle('empty', !chosenSlot);
+  if (chosenSlot) {
+    const title = document.createElement('strong');
+    title.textContent = fullLabel.format(new Date(chosenSlot.start));
+    box.replaceChildren(title, document.createTextNode('with ' + chosenSlot.provider));
+  } else {
+    box.textContent = 'Choose a time to continue.';
+  }
+  $('submit').disabled = !chosenSlot || submitting;
+}
+
+function showError(message) {
+  $('form-error').textContent = message;
+  $('form-error').hidden = false;
+}
+
+function clearError() {
+  $('form-error').hidden = true;
+}
+
+async function loadSlots() {
+  try {
+    const { res, body } = await api('/slots');
+    if (!res.ok) throw new Error();
+    slots = body.slots;
+    const select = $('provider');
+    const current = select.value;
+    const names = [...new Set(slots.map((s) => s.provider))].sort();
+    select.replaceChildren(new Option('Any doctor', ''), ...names.map((name) => new Option(name, name)));
+    select.value = names.includes(current) ? current : '';
+    render();
+  } catch {
+    $('slots-status').hidden = false;
+    $('slots-status').textContent = 'We could not load the available times. Please refresh the page.';
+  }
+}
+
+function showConfirmation(booking) {
+  const slot = slots.find((s) => s.id === booking.slot_id);
+  const cancelled = booking.status === 'cancelled';
+  $('confirmation-heading').textContent = cancelled ? 'This appointment was cancelled' : 'Your appointment is booked';
+  $('c-status').textContent = cancelled ? 'Cancelled' : 'Confirmed';
+  $('c-status').classList.toggle('cancelled', cancelled);
+  $('c-when').textContent = slot ? fullLabel.format(new Date(slot.start)) : 'Slot ' + booking.slot_id;
+  $('c-provider').textContent = slot ? slot.provider : '—';
+  $('c-name').textContent = booking.name;
+  $('c-email').textContent = booking.email;
+  $('c-id').textContent = booking.id;
+  $('booking-view').hidden = true;
+  $('confirmation-view').hidden = false;
+  $('confirmation-view').focus();
+}
+
+function showBookingForm() {
+  history.replaceState(null, '', location.pathname);
+  $('confirmation-view').hidden = true;
+  $('booking-view').hidden = false;
+  $('name').value = '';
+  $('email').value = '';
+  chosenSlot = null;
+  clearError();
+  loadSlots();
+}
+
+$('provider').onchange = render;
+$('book-another').onclick = showBookingForm;
+
+$('form').onsubmit = async (event) => {
+  event.preventDefault();
+  if (submitting || !chosenSlot) return;
+  clearError();
+
+  const payload = JSON.stringify({ slot_id: chosenSlot.id, name: $('name').value, email: $('email').value });
+  if (pendingRequest?.payload !== payload) pendingRequest = { payload, key: crypto.randomUUID() };
+
+  submitting = true;
+  $('submit').disabled = true;
+  $('submit').textContent = 'Booking…';
+  try {
+    const { res, body } = await api('/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pendingRequest.key },
+      body: payload,
+    });
+    if (res.status === 201) {
+      pendingRequest = null;
+      history.replaceState(null, '', '#booking=' + encodeURIComponent(body.id));
+      await loadSlots();
+      showConfirmation(body);
+    } else if (res.status === 409) {
+      pendingRequest = null;
+      showError('Sorry, someone has just taken that time. Please choose another.');
+      await loadSlots();
+    } else if (res.status === 429) {
+      const seconds = res.headers.get('Retry-After');
+      showError(`Too many attempts. Please try again in ${seconds} seconds.`);
+    } else {
+      showError(body.error ? body.error[0].toUpperCase() + body.error.slice(1) + '.' : 'Something went wrong. Please try again.');
+      if (res.status === 400 || res.status === 404) pendingRequest = null;
+      await loadSlots();
+    }
+  } catch {
+    showError('We could not reach the clinic. Please check your connection and try again.');
+  } finally {
+    submitting = false;
+    $('submit').textContent = 'Confirm booking';
+    renderSelection();
+  }
+};
+
+(async function start() {
+  await loadSlots();
+  const match = location.hash.match(/^#booking=(.+)$/);
+  if (!match) return;
+  const { res, body } = await api('/bookings/' + match[1]);
+  if (res.ok) showConfirmation(body);
+  else history.replaceState(null, '', location.pathname);
+})();
+</script>
+</body>
+</html>
